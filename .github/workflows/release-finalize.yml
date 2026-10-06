@@ -21,8 +21,16 @@ jobs:
         id: check
         env:
           LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
         run: |
-          if echo "$LABELS" | grep -q "autorelease: pending"; then
+          # The label alone is not proof of origin: anyone with triage access can add it.
+          # Also require the PR to come from this repository and from the branch
+          # that release-please creates, not from an arbitrary branch or a fork.
+          if echo "$LABELS" | grep -q "autorelease: pending" \
+            && [ "$HEAD_REPO" = "$BASE_REPO" ] \
+            && [[ "$HEAD_REF" == release-please--branches--release/candidate--* ]]; then
             echo "is_release_pr=true" >> $GITHUB_OUTPUT
           else
             echo "Not a release-please PR, skipping"
